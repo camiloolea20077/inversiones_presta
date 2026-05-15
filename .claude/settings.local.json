@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//d/Proyectos Camilo/inversiones_presta_front/**)",
+      "Read(//c/Users/camil/Downloads/recaudo_diario_agentes_hu_md/**)"
+    ]
+  }
+}
