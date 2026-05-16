@@ -2,7 +2,39 @@
   "permissions": {
     "allow": [
       "Read(//d/Proyectos Camilo/inversiones_presta_front/**)",
-      "Read(//c/Users/camil/Downloads/recaudo_diario_agentes_hu_md/**)"
+      "Read(//c/Users/camil/Downloads/recaudo_diario_agentes_hu_md/**)",
+      "Bash(find . -type f \\\\\\( -iname \"*security*\" -o -iname \"*config*\" -o -iname \"AuthController*\" -o -iname \"AuthService*\" -o -iname \"*UserDetails*\" \\\\\\))",
+      "Bash(ls controllers *)",
+      "Bash(ls config *)",
+      "Bash(ls configuration *)",
+      "Bash(./mvnw -q compile)",
+      "Bash(./mvnw compile *)",
+      "Bash(npx ng *)",
+      "Bash(./mvnw clean *)",
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(./mvnw dependency:tree -Dincludes=jakarta.validation:jakarta.validation-api,org.hibernate.validator -q)",
+      "Bash(./mvnw dependency:tree)",
+      "Bash(PGPASSWORD=1234 psql -h localhost -U postgres -d prestamos -c \"\\\\dt\" -c \"\\\\d usuarios\" -c \"\\\\d roles\")",
+      "PowerShell(Add-Type -AssemblyName System.Drawing; $img = [System.Drawing.Image]::FromFile\\(\"D:\\\\Proyectos Camilo\\\\inversiones_presta\\\\images\\\\ChatGPT Image 15 may 2026, 07_28_32.png\"\\); \"$\\($img.Width\\) x $\\($img.Height\\)\"; $img.Dispose\\(\\))",
+      "Read(//tmp/**)",
+      "Bash(break)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:4200)",
+      "Bash(npm install *)",
+      "Bash(rm -f src/app/features/admin/admin-home/admin-home.component.ts)",
+      "Bash(rmdir src/app/features/admin/admin-home)",
+      "Bash(curl -s -o /dev/null -w \"4200=%{http_code}\\\\n\" http://localhost:4200)",
+      "Bash(curl -s -o /dev/null -w \"4321=%{http_code}\\\\n\" http://localhost:4321)",
+      "Bash(./mvnw -q clean compile)",
+      "Bash(node -e \"const p=require\\('./package.json'\\);console.log\\(JSON.stringify\\(p.dependencies,null,1\\)\\)\")",
+      "Bash(powershell -NoProfile -Command ' *)",
+      "Bash(echo \"BACKEND_EXIT=$?\")",
+      "Bash(curl *)",
+      "Bash(rm -rf C:/Users/camil/AppData/Local/Temp/chrome_prof2)",
+      "Bash(rm -f C:/Users/camil/AppData/Local/Temp/trab2.png)",
+      "Bash('C:/Program Files/Google/Chrome/Application/chrome.exe' --headless=new --disable-gpu --hide-scrollbars --user-data-dir=C:/Users/camil/AppData/Local/Temp/chrome_prof2 --window-size=1672,1240 --virtual-time-budget=18000 --screenshot=C:/Users/camil/AppData/Local/Temp/trab2.png http://localhost:4200/admin/trabajadores)",
+      "Bash(node -e \"const fs=require\\('fs'\\);const b=fs.readFileSync\\('Imagen Clientes y prestamos.png'\\);console.log\\('dim',b.readUInt32BE\\(16\\)+'x'+b.readUInt32BE\\(20\\)\\)\")",
+      "Bash(node -e \"const fs=require\\('fs'\\);for\\(const f of ['Rutas del trabajador.png','Registrar pagos.png']\\){const b=fs.readFileSync\\(f\\);console.log\\(f,b.readUInt32BE\\(16\\)+'x'+b.readUInt32BE\\(20\\)\\)}\")",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const j=JSON.parse\\(d\\).data;console.log\\('totalClientes:',j.totalClientes,'totalEsperado:',j.totalEsperado\\);j.detalles.forEach\\(x=>console.log\\(' ',x.orden,x.clienteNombre,x.estado,x.valorEsperado\\)\\)}\\)\")"
     ]
   }
 }

@@ -1,0 +1,26 @@
+@port = 9001
+@base = http://localhost:{{port}}/api/auth
+@token = Bearer eyJhbGciOiJIUzI1NiJ9.eyJ1c3VhcmlvSWQiOjEsInJvbCI6IkFETUlOSVNUUkFET1IiLCJzdWIiOiJhZG1pbkByZWNhdWRvLmxvY2FsIiwiaWF0IjoxNzc4ODUwMTYwLCJleHAiOjE3NzkxMDkzNjB9.vnrM4NwTdjfxi-ik1TjnmeRKk5iNcUOgGWASCsTEyZg
+
+### Login administrador
+POST {{base}}/login
+Content-Type: application/json
+
+{
+  "correo": "admin@recaudo.local",
+  "password": "Admin123*",
+  "rol": "ADMINISTRADOR"
+}
+
+### Login sin especificar rol
+POST {{base}}/login
+Content-Type: application/json
+
+{
+  "correo": "admin@recaudo.local",
+  "password": "Admin123*"
+}
+
+### Usuario autenticado (requiere token)
+GET {{base}}/me
+Authorization: {{token}}
