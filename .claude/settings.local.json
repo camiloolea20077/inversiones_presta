@@ -34,7 +34,30 @@
       "Bash('C:/Program Files/Google/Chrome/Application/chrome.exe' --headless=new --disable-gpu --hide-scrollbars --user-data-dir=C:/Users/camil/AppData/Local/Temp/chrome_prof2 --window-size=1672,1240 --virtual-time-budget=18000 --screenshot=C:/Users/camil/AppData/Local/Temp/trab2.png http://localhost:4200/admin/trabajadores)",
       "Bash(node -e \"const fs=require\\('fs'\\);const b=fs.readFileSync\\('Imagen Clientes y prestamos.png'\\);console.log\\('dim',b.readUInt32BE\\(16\\)+'x'+b.readUInt32BE\\(20\\)\\)\")",
       "Bash(node -e \"const fs=require\\('fs'\\);for\\(const f of ['Rutas del trabajador.png','Registrar pagos.png']\\){const b=fs.readFileSync\\(f\\);console.log\\(f,b.readUInt32BE\\(16\\)+'x'+b.readUInt32BE\\(20\\)\\)}\")",
-      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const j=JSON.parse\\(d\\).data;console.log\\('totalClientes:',j.totalClientes,'totalEsperado:',j.totalEsperado\\);j.detalles.forEach\\(x=>console.log\\(' ',x.orden,x.clienteNombre,x.estado,x.valorEsperado\\)\\)}\\)\")"
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const j=JSON.parse\\(d\\).data;console.log\\('totalClientes:',j.totalClientes,'totalEsperado:',j.totalEsperado\\);j.detalles.forEach\\(x=>console.log\\(' ',x.orden,x.clienteNombre,x.estado,x.valorEsperado\\)\\)}\\)\")",
+      "Bash(cmd /c \"mvnw.cmd -q compile\")",
+      "Bash(D:/Proyectos Camilo/inversiones_presta/mvnw.cmd *)",
+      "Bash(where mvn *)",
+      "Bash(where java *)",
+      "Bash(/c/Windows/System32/cmd.exe *)",
+      "Bash(powershell *)",
+      "Bash(/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe *)",
+      "Bash(JAVA_HOME=\"C:\\\\Program Files\\\\Java\\\\jdk-21\" ./mvnw -q compile)",
+      "Bash(cmd *)",
+      "Bash(C:/WINDOWS/System32/cmd.exe *)",
+      "Bash(C:/Users/camil/OneDrive/Documentos/apache-maven-3.9.9/bin/mvn.cmd *)",
+      "Bash(JAVA_HOME=\"C:\\\\Program Files\\\\Java\\\\jdk-21\" C:/Users/camil/OneDrive/Documentos/apache-maven-3.9.9/bin/mvn.cmd *)",
+      "Bash(C:/nvm4w/nodejs/npx.cmd *)",
+      "Bash(PATH=/c/nvm4w/nodejs:__TRACKED_VAR__ C:/nvm4w/nodejs/node.exe node_modules/@angular/cli/bin/ng.js build --configuration development)",
+      "Bash(dir /s /b src\\\\main\\\\java\\\\com\\\\cloud_technological\\\\inversiones_prestar)",
+      "Bash(findstr /i caja)",
+      "Bash(find \"D:\\\\\\\\Proyectos Camilo\\\\\\\\inversiones_presta_front\\\\\\\\src\\\\\\\\app\\\\\\\\core\" -type f)",
+      "Bash(C:/Windows/System32/cmd.exe *)",
+      "Bash(C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe *)",
+      "Bash(C:/WINDOWS/System32/WindowsPowerShell/v1.0/powershell.exe *)",
+      "Bash(JAVA_HOME='C:\\\\Program Files\\\\Java\\\\jdk-21' PATH='C:\\\\Program Files\\\\Java\\\\jdk-21\\\\bin:/c/Windows/System32:/usr/bin:__TRACKED_VAR__' cmd.exe /c 'mvnw.cmd -q compile')",
+      "Bash(PATH=\"/c/Windows/System32:/c/Windows:/usr/bin:$PATH\" cmd.exe *)",
+      "Bash(where cmd.exe)"
     ]
   }
 }

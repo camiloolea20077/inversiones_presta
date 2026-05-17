@@ -15,6 +15,7 @@ import com.cloud_technological.inversiones_prestar.repositories.clientes.Cliente
 import com.cloud_technological.inversiones_prestar.repositories.clientes.ClienteQueryRepository;
 import com.cloud_technological.inversiones_prestar.repositories.clientes.RutaClienteJPARepository;
 import com.cloud_technological.inversiones_prestar.repositories.rutas.RutaJPARepository;
+import com.cloud_technological.inversiones_prestar.services.AuditoriaService;
 import com.cloud_technological.inversiones_prestar.services.RutaClienteService;
 import com.cloud_technological.inversiones_prestar.utils.GlobalException;
 import com.cloud_technological.inversiones_prestar.utils.SecurityUtils;
@@ -31,6 +32,7 @@ public class RutaClienteServiceImpl implements RutaClienteService {
     private final ClienteQueryRepository clienteQueryRepository;
     private final RutaJPARepository rutaRepository;
     private final ClienteJPARepository clienteRepository;
+    private final AuditoriaService auditoriaService;
     private final SecurityUtils securityUtils;
 
     @Override
@@ -57,6 +59,12 @@ public class RutaClienteServiceImpl implements RutaClienteService {
 
         clienteQueryRepository.insertarClienteEnRuta(
                 rutaId, clienteId, ordenBase, securityUtils.getUsuarioId());
+
+        // Auditoría (HU-BE-020): cambio de orden en ruta.
+        auditoriaService.registrar("INSERTAR_EN_RUTA", "ruta_clientes", clienteId, null,
+                Map.of("rutaId", rutaId, "clienteId", clienteId, "ordenBase",
+                        ordenBase == null ? "" : ordenBase),
+                "Cliente insertado en la ruta " + rutaId);
 
         return clienteQueryRepository.listarClientesDeRuta(rutaId);
     }
@@ -98,6 +106,11 @@ public class RutaClienteServiceImpl implements RutaClienteService {
             rc.setUpdatedBy(usuarioId);
         }
         rutaClienteRepository.saveAllAndFlush(actuales);
+
+        // Auditoría (HU-BE-020): cambio de orden en ruta.
+        auditoriaService.registrar("REORDENAR", "ruta_clientes", rutaId, null,
+                Map.of("rutaId", rutaId, "ordenIds", ordenIds),
+                "Reordenamiento de clientes en la ruta " + rutaId);
 
         return clienteQueryRepository.listarClientesDeRuta(rutaId);
     }

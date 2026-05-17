@@ -5,11 +5,14 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.cloud_technological.inversiones_prestar.dto.pagos.MarcarNoPagoDto;
+import com.cloud_technological.inversiones_prestar.dto.pagos.PagoDetalleDto;
+import com.cloud_technological.inversiones_prestar.dto.pagos.PagoListDto;
 import com.cloud_technological.inversiones_prestar.dto.pagos.PagoResponseDto;
 import com.cloud_technological.inversiones_prestar.dto.pagos.RegistrarPagoDto;
 import com.cloud_technological.inversiones_prestar.entity.ClienteEntity;
@@ -18,14 +21,22 @@ import com.cloud_technological.inversiones_prestar.entity.PagoEntity;
 import com.cloud_technological.inversiones_prestar.entity.PrestamoEntity;
 import com.cloud_technological.inversiones_prestar.entity.RecaudoDetalleEntity;
 import com.cloud_technological.inversiones_prestar.entity.RecaudoDiarioEntity;
+import com.cloud_technological.inversiones_prestar.entity.RutaEntity;
+import com.cloud_technological.inversiones_prestar.entity.TrabajadorEntity;
 import com.cloud_technological.inversiones_prestar.repositories.clientes.ClienteJPARepository;
 import com.cloud_technological.inversiones_prestar.repositories.pagos.PagoJPARepository;
+import com.cloud_technological.inversiones_prestar.repositories.pagos.PagoQueryRepository;
 import com.cloud_technological.inversiones_prestar.repositories.prestamos.CuotaPrestamoJPARepository;
 import com.cloud_technological.inversiones_prestar.repositories.prestamos.PrestamoJPARepository;
 import com.cloud_technological.inversiones_prestar.repositories.recaudos.RecaudoDetalleJPARepository;
 import com.cloud_technological.inversiones_prestar.repositories.recaudos.RecaudoDiarioJPARepository;
+import com.cloud_technological.inversiones_prestar.repositories.rutas.RutaJPARepository;
+import com.cloud_technological.inversiones_prestar.repositories.trabajadores.TrabajadorJPARepository;
+import com.cloud_technological.inversiones_prestar.services.AuditoriaService;
+import com.cloud_technological.inversiones_prestar.services.CajaService;
 import com.cloud_technological.inversiones_prestar.services.PagoService;
 import com.cloud_technological.inversiones_prestar.utils.GlobalException;
+import com.cloud_technological.inversiones_prestar.utils.PageableDto;
 import com.cloud_technological.inversiones_prestar.utils.SecurityUtils;
 
 import lombok.RequiredArgsConstructor;
@@ -38,11 +49,16 @@ public class PagoServiceImpl implements PagoService {
             Set.of("EFECTIVO", "TRANSFERENCIA", "NEQUI", "DAVIPLATA", "OTRO");
 
     private final PagoJPARepository pagoRepository;
+    private final PagoQueryRepository pagoQueryRepository;
     private final RecaudoDetalleJPARepository detalleRepository;
     private final RecaudoDiarioJPARepository recaudoRepository;
     private final PrestamoJPARepository prestamoRepository;
     private final CuotaPrestamoJPARepository cuotaRepository;
     private final ClienteJPARepository clienteRepository;
+    private final TrabajadorJPARepository trabajadorRepository;
+    private final RutaJPARepository rutaRepository;
+    private final CajaService cajaService;
+    private final AuditoriaService auditoriaService;
     private final SecurityUtils securityUtils;
 
     @Override
@@ -130,9 +146,17 @@ public class PagoServiceImpl implements PagoService {
                 .updatedBy(usuarioId)
                 .build());
 
-        // TODO: generar movimiento de caja PAGO_RECIBIDO al implementar el módulo de Caja.
+        // Movimiento de caja PAGO_RECIBIDO (HU-BE-015 / HU-BE-016).
+        // Suma a valor_recaudado de la caja abierta del trabajador.
+        cajaService.registrarPagoRecibido(recaudo.getTrabajadorId(), recaudo.getRutaId(),
+                recaudo.getFechaRecaudo(), valor, pago.getId(), usuarioId);
 
         ClienteEntity cliente = clienteRepository.findById(detalle.getClienteId()).orElse(null);
+
+        // Auditoría (HU-BE-020): registro de pago.
+        auditoriaService.registrar("PAGAR", "pagos", pago.getId(), null, pago,
+                "Pago de " + valor + " registrado"
+                        + (cliente != null ? " para el cliente " + cliente.getNombre() : ""));
 
         return PagoResponseDto.builder()
                 .id(pago.getId())
@@ -175,6 +199,56 @@ public class PagoServiceImpl implements PagoService {
                 .clienteNombre(cliente != null ? cliente.getNombre() : null)
                 .detalleEstado(detalle.getEstado())
                 .saldoPrestamo(detalle.getSaldoPendiente())
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<PagoListDto> listar(PageableDto<Object> pageable) {
+        return pagoQueryRepository.listar(pageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PagoDetalleDto obtener(Long id) {
+        PagoEntity pago = pagoRepository.findByIdAndDeletedAtIsNull(id)
+                .orElseThrow(() -> new GlobalException(HttpStatus.NOT_FOUND, "Pago no encontrado"));
+
+        ClienteEntity cliente = clienteRepository.findById(pago.getClienteId()).orElse(null);
+        TrabajadorEntity trabajador = trabajadorRepository.findById(pago.getTrabajadorId()).orElse(null);
+        RutaEntity ruta = rutaRepository.findById(pago.getRutaId()).orElse(null);
+        PrestamoEntity prestamo = prestamoRepository.findById(pago.getPrestamoId()).orElse(null);
+
+        Integer numeroCuota = null;
+        if (pago.getCuotaPrestamoId() != null) {
+            numeroCuota = cuotaRepository.findById(pago.getCuotaPrestamoId())
+                    .map(CuotaPrestamoEntity::getNumeroCuota)
+                    .orElse(null);
+        }
+
+        return PagoDetalleDto.builder()
+                .id(pago.getId())
+                .fechaPago(pago.getFechaPago())
+                .clienteId(pago.getClienteId())
+                .clienteNombre(cliente == null ? null : cliente.getNombre())
+                .clienteDocumento(cliente == null ? null : cliente.getDocumento())
+                .clienteTelefono(cliente == null ? null : cliente.getTelefono())
+                .trabajadorId(pago.getTrabajadorId())
+                .trabajadorNombre(trabajador == null ? null : trabajador.getNombre())
+                .rutaId(pago.getRutaId())
+                .rutaNombre(ruta == null ? null : ruta.getNombre())
+                .prestamoId(pago.getPrestamoId())
+                .prestamoMonto(prestamo == null ? null : prestamo.getMontoPrestado())
+                .prestamoTotalPagar(prestamo == null ? null : prestamo.getTotalPagar())
+                .prestamoSaldoActual(prestamo == null ? null : prestamo.getSaldoActual())
+                .prestamoEstado(prestamo == null ? null : prestamo.getEstado())
+                .cuotaPrestamoId(pago.getCuotaPrestamoId())
+                .numeroCuota(numeroCuota)
+                .recaudoDetalleId(pago.getRecaudoDetalleId())
+                .valorPago(pago.getValorPago())
+                .formaPago(pago.getFormaPago())
+                .estado(pago.getEstado())
+                .observacion(pago.getObservacion())
                 .build();
     }
 

@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.cloud_technological.inversiones_prestar.dto.prestamos.ClienteConPrestamoRequestDto;
+import com.cloud_technological.inversiones_prestar.dto.prestamos.ClienteConPrestamoResponseDto;
 import com.cloud_technological.inversiones_prestar.dto.prestamos.PrestamoListDto;
 import com.cloud_technological.inversiones_prestar.dto.prestamos.PrestamoRequestDto;
 import com.cloud_technological.inversiones_prestar.dto.prestamos.PrestamoResponseDto;
@@ -35,6 +37,15 @@ public class PrestamoController {
         PrestamoResponseDto result = prestamoService.crear(dto);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(new ApiResponse<>(HttpStatus.CREATED.value(), "Préstamo creado", false, result));
+    }
+
+    @PostMapping("/cliente-nuevo")
+    public ResponseEntity<ApiResponse<ClienteConPrestamoResponseDto>> crearClienteConPrestamo(
+            @Valid @RequestBody ClienteConPrestamoRequestDto dto) {
+        ClienteConPrestamoResponseDto result = prestamoService.crearClienteConPrestamo(dto);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new ApiResponse<>(HttpStatus.CREATED.value(),
+                        "Cliente y préstamo creados", false, result));
     }
 
     @GetMapping("/{id}")

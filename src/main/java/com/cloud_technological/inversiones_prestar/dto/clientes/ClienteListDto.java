@@ -1,5 +1,6 @@
 package com.cloud_technological.inversiones_prestar.dto.clientes;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 import lombok.Getter;
@@ -25,4 +26,11 @@ public class ClienteListDto {
     private String ruta;
     private Long ruta_id;
     private LocalDate fecha_registro;
+
+    /** Saldo del préstamo activo más reciente; null si no tiene. */
+    private BigDecimal prestamo_activo;
+    /** Cantidad de préstamos en estado ACTIVO. */
+    private Integer prestamos_activos;
+    /** Días de mora del cliente (0 si está al día). */
+    private Integer dias_mora;
 }

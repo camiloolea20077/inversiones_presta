@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//d/Proyectos Camilo/inversiones_presta/**)",
+      "Bash(./mvnw -q compile)",
+      "Read(//d/Proyectos Camilo/inversiones_presta_front/**)",
+      "Bash(npx ng *)",
+      "Bash(mvn compile *)",
+      "Bash(mvn clean *)",
+      "Bash(PGPASSWORD=1234 psql -h localhost -p 5432 -U postgres -d prestamos -f docs/sql/hu-be-020_auditoria.sql)",
+      "PowerShell($env:PGPASSWORD = \"1234\"; & \"C:\\\\Program Files\\\\PostgreSQL\\\\17\\\\bin\\\\psql.exe\" -h localhost -p 5432 -U postgres -d prestamos -f \"D:\\\\Proyectos Camilo\\\\inversiones_presta\\\\docs\\\\sql\\\\hu-be-020_auditoria.sql\")"
+    ]
+  }
+}

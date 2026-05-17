@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.cloud_technological.inversiones_prestar.dto.clientes.CambiarEstadoClienteDto;
 import com.cloud_technological.inversiones_prestar.dto.clientes.ClienteComboDto;
+import com.cloud_technological.inversiones_prestar.dto.clientes.ClienteDetalleDto;
 import com.cloud_technological.inversiones_prestar.dto.clientes.ClienteListDto;
 import com.cloud_technological.inversiones_prestar.dto.clientes.ClienteRequestDto;
 import com.cloud_technological.inversiones_prestar.dto.clientes.ClienteResponseDto;
@@ -52,6 +53,13 @@ public class ClienteController {
     public ResponseEntity<ApiResponse<ClienteResponseDto>> obtener(@PathVariable Long id) {
         ClienteResponseDto result = clienteService.obtener(id);
         return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(), "Cliente encontrado", false, result));
+    }
+
+    @GetMapping("/{id}/detalle")
+    public ResponseEntity<ApiResponse<ClienteDetalleDto>> detalle(@PathVariable Long id) {
+        ClienteDetalleDto result = clienteService.detalle(id);
+        return ResponseEntity.ok(new ApiResponse<>(HttpStatus.OK.value(),
+                "Detalle del cliente", false, result));
     }
 
     @PostMapping("/listar")

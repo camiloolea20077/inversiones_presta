@@ -3,6 +3,7 @@ package com.cloud_technological.inversiones_prestar.services.implementations;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -12,6 +13,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.cloud_technological.inversiones_prestar.dto.prestamos.ClienteConPrestamoRequestDto;
+import com.cloud_technological.inversiones_prestar.dto.prestamos.ClienteConPrestamoResponseDto;
 import com.cloud_technological.inversiones_prestar.dto.prestamos.CuotaPrestamoDto;
 import com.cloud_technological.inversiones_prestar.dto.prestamos.PrestamoListDto;
 import com.cloud_technological.inversiones_prestar.dto.prestamos.PrestamoRequestDto;
@@ -22,6 +25,9 @@ import com.cloud_technological.inversiones_prestar.entity.ClienteEntity;
 import com.cloud_technological.inversiones_prestar.entity.CuotaPrestamoEntity;
 import com.cloud_technological.inversiones_prestar.entity.LimiteTrabajadorEntity;
 import com.cloud_technological.inversiones_prestar.entity.PrestamoEntity;
+import com.cloud_technological.inversiones_prestar.entity.RecaudoDetalleEntity;
+import com.cloud_technological.inversiones_prestar.entity.RecaudoDiarioEntity;
+import com.cloud_technological.inversiones_prestar.entity.RutaClienteEntity;
 import com.cloud_technological.inversiones_prestar.entity.RutaEntity;
 import com.cloud_technological.inversiones_prestar.entity.TrabajadorEntity;
 import com.cloud_technological.inversiones_prestar.repositories.clientes.ClienteJPARepository;
@@ -30,9 +36,13 @@ import com.cloud_technological.inversiones_prestar.repositories.clientes.RutaCli
 import com.cloud_technological.inversiones_prestar.repositories.prestamos.CuotaPrestamoJPARepository;
 import com.cloud_technological.inversiones_prestar.repositories.prestamos.PrestamoJPARepository;
 import com.cloud_technological.inversiones_prestar.repositories.prestamos.PrestamoQueryRepository;
+import com.cloud_technological.inversiones_prestar.repositories.recaudos.RecaudoDetalleJPARepository;
+import com.cloud_technological.inversiones_prestar.repositories.recaudos.RecaudoDiarioJPARepository;
 import com.cloud_technological.inversiones_prestar.repositories.rutas.RutaJPARepository;
 import com.cloud_technological.inversiones_prestar.repositories.trabajadores.LimiteTrabajadorJPARepository;
 import com.cloud_technological.inversiones_prestar.repositories.trabajadores.TrabajadorJPARepository;
+import com.cloud_technological.inversiones_prestar.services.AuditoriaService;
+import com.cloud_technological.inversiones_prestar.services.CajaService;
 import com.cloud_technological.inversiones_prestar.services.PrestamoService;
 import com.cloud_technological.inversiones_prestar.utils.GlobalException;
 import com.cloud_technological.inversiones_prestar.utils.PageableDto;
@@ -57,6 +67,10 @@ public class PrestamoServiceImpl implements PrestamoService {
     private final RutaJPARepository rutaRepository;
     private final TrabajadorJPARepository trabajadorRepository;
     private final LimiteTrabajadorJPARepository limiteRepository;
+    private final RecaudoDiarioJPARepository recaudoRepository;
+    private final RecaudoDetalleJPARepository recaudoDetalleRepository;
+    private final CajaService cajaService;
+    private final AuditoriaService auditoriaService;
     private final SecurityUtils securityUtils;
 
     @Override
@@ -107,7 +121,179 @@ public class PrestamoServiceImpl implements PrestamoService {
         // El cliente del préstamo queda en el recorrido de la ruta seleccionada.
         asegurarClienteEnRuta(ruta.getId(), cliente.getId(), usuarioId);
 
+        // Movimiento de caja PRESTAMO_ENTREGADO si el trabajador tiene caja abierta.
+        cajaService.registrarPrestamoEntregado(trabajador.getId(), ruta.getId(), inicio,
+                guardado.getMontoPrestado(), guardado.getId(), usuarioId);
+
+        // Auditoría (HU-BE-020): creación de préstamo.
+        auditoriaService.registrar("CREAR", "prestamos", guardado.getId(), null, guardado,
+                "Préstamo creado para el cliente " + cliente.getNombre()
+                        + " por " + guardado.getMontoPrestado());
+
         return toResponse(guardado, cuotas, cliente, ruta, trabajador);
+    }
+
+    @Override
+    @Transactional
+    public ClienteConPrestamoResponseDto crearClienteConPrestamo(ClienteConPrestamoRequestDto dto) {
+        // 1. Validaciones previas (todo se valida antes de escribir nada).
+        RutaEntity ruta = rutaRepository.findByIdAndDeletedAtIsNull(dto.getRutaId())
+                .orElseThrow(() -> new GlobalException(HttpStatus.BAD_REQUEST, "La ruta no existe"));
+        TrabajadorEntity trabajador = trabajadorRepository.findByIdAndDeletedAtIsNull(dto.getTrabajadorId())
+                .orElseThrow(() -> new GlobalException(HttpStatus.BAD_REQUEST, "El trabajador no existe"));
+
+        String tipoInteres = normalizarTipo(dto.getTipoInteres());
+        validarLimites(trabajador.getId(), dto.getMontoPrestado(), dto.getTasaPorcentaje(),
+                dto.getPlazoDias());
+
+        Long usuarioId = securityUtils.getUsuarioId();
+
+        // 2. Crear el cliente.
+        ClienteEntity cliente = clienteRepository.save(ClienteEntity.builder()
+                .documento(limpiar(dto.getDocumento()))
+                .nombre(dto.getNombre().trim())
+                .telefono(limpiar(dto.getTelefono()))
+                .direccion(limpiar(dto.getDireccion()))
+                .barrio(limpiar(dto.getBarrio()))
+                .observacion(limpiar(dto.getObservacionCliente()))
+                .estado("ACTIVO")
+                .activo(Boolean.TRUE)
+                .updatedBy(usuarioId)
+                .build());
+
+        // 3. Insertarlo en la ruta después del cliente base.
+        clienteQueryRepository.insertarClienteEnRuta(
+                ruta.getId(), cliente.getId(), dto.getOrdenBase(), usuarioId);
+
+        Integer ordenAsignado = rutaClienteRepository
+                .findByRutaIdAndClienteIdAndActivoTrueAndDeletedAtIsNull(ruta.getId(), cliente.getId())
+                .map(RutaClienteEntity::getOrden)
+                .orElse(null);
+
+        // 4. Crear el préstamo activo + 5. generar las cuotas.
+        SimulacionResponseDto calculo = calcular(
+                dto.getMontoPrestado(), dto.getTasaPorcentaje(), dto.getPlazoDias(), tipoInteres);
+
+        LocalDate inicio = LocalDate.now();
+        PrestamoEntity prestamo = prestamoRepository.save(PrestamoEntity.builder()
+                .clienteId(cliente.getId())
+                .rutaId(ruta.getId())
+                .trabajadorId(trabajador.getId())
+                .montoPrestado(escala(dto.getMontoPrestado()))
+                .tasaPorcentaje(dto.getTasaPorcentaje())
+                .tipoInteres(tipoInteres)
+                .plazoDias(dto.getPlazoDias())
+                .valorInteres(calculo.getValorInteres())
+                .totalPagar(calculo.getTotalPagar())
+                .cuotaDiaria(calculo.getCuotaDiaria())
+                .saldoActual(calculo.getTotalPagar())
+                .fechaInicio(inicio)
+                .fechaFin(inicio.plusDays(dto.getPlazoDias()))
+                .estado("ACTIVO")
+                .observacion(dto.getObservacionPrestamo())
+                .updatedBy(usuarioId)
+                .build());
+
+        List<CuotaPrestamoEntity> cuotas = generarCuotas(prestamo, calculo, inicio, usuarioId);
+        cuotaRepository.saveAll(cuotas);
+
+        // 6. Actualizar la planilla diaria si ya existe.
+        Long recaudoId = actualizarPlanillaDiaria(
+                ruta.getId(), cliente.getId(), ordenAsignado, prestamo, usuarioId);
+
+        // 7. Movimiento de caja PRESTAMO_ENTREGADO (HU-BE-015 / HU-BE-016).
+        // Suma a valor_prestamos_entregados de la caja abierta del trabajador.
+        cajaService.registrarPrestamoEntregado(trabajador.getId(), ruta.getId(), inicio,
+                prestamo.getMontoPrestado(), prestamo.getId(), usuarioId);
+
+        // Auditoría (HU-BE-020): creación de cliente y préstamo en una sola operación.
+        auditoriaService.registrar("CREAR", "clientes", cliente.getId(), null, cliente,
+                "Creación de cliente: " + cliente.getNombre());
+        auditoriaService.registrar("CREAR", "prestamos", prestamo.getId(), null, prestamo,
+                "Préstamo creado para el cliente " + cliente.getNombre()
+                        + " por " + prestamo.getMontoPrestado());
+
+        return ClienteConPrestamoResponseDto.builder()
+                .clienteId(cliente.getId())
+                .clienteNombre(cliente.getNombre())
+                .ordenAsignado(ordenAsignado)
+                .prestamo(toResponse(prestamo, cuotas, cliente, ruta, trabajador))
+                .recaudoDiarioId(recaudoId)
+                .planillaActualizada(recaudoId != null)
+                .build();
+    }
+
+    /**
+     * Si existe planilla diaria abierta para la ruta, agrega el renglón del
+     * nuevo cliente con su préstamo recién creado y recalcula el total esperado.
+     *
+     * @return el id del recaudo actualizado, o null si no había planilla del día.
+     */
+    private Long actualizarPlanillaDiaria(Long rutaId, Long clienteId, Integer orden,
+            PrestamoEntity prestamo, Long usuarioId) {
+        RecaudoDiarioEntity recaudo = recaudoRepository
+                .findFirstByRutaIdAndFechaRecaudoAndEstadoNotAndDeletedAtIsNull(
+                        rutaId, LocalDate.now(), "ANULADO")
+                .orElse(null);
+        if (recaudo == null) {
+            return null;
+        }
+        if (!"ABIERTO".equals(recaudo.getEstado()) && !"EN_PROCESO".equals(recaudo.getEstado())) {
+            return recaudo.getId();
+        }
+
+        List<RecaudoDetalleEntity> detalles = recaudoDetalleRepository
+                .findByRecaudoDiarioIdAndDeletedAtIsNullOrderByOrdenAsc(recaudo.getId());
+
+        boolean yaTieneDetalle = detalles.stream()
+                .anyMatch(d -> d.getClienteId().equals(clienteId));
+        if (!yaTieneDetalle) {
+            int siguienteOrden = detalles.stream()
+                    .mapToInt(RecaudoDetalleEntity::getOrden).max().orElse(0) + 1;
+            int ordenDestino = orden != null ? orden : siguienteOrden;
+
+            // Hace hueco en la planilla: desplaza una posición los renglones con
+            // orden >= ordenDestino. Se usa un rango temporal para no chocar con
+            // el índice único (recaudo_diario_id, orden).
+            List<RecaudoDetalleEntity> aDesplazar = detalles.stream()
+                    .filter(d -> d.getOrden() >= ordenDestino)
+                    .toList();
+            if (!aDesplazar.isEmpty()) {
+                aDesplazar.forEach(d -> d.setOrden(d.getOrden() + 100000));
+                recaudoDetalleRepository.saveAllAndFlush(aDesplazar);
+                aDesplazar.forEach(d -> {
+                    d.setOrden(d.getOrden() - 100000 + 1);
+                    d.setUpdatedAt(LocalDateTime.now());
+                    d.setUpdatedBy(usuarioId);
+                });
+                recaudoDetalleRepository.saveAllAndFlush(aDesplazar);
+            }
+
+            RecaudoDetalleEntity detalle = recaudoDetalleRepository.save(RecaudoDetalleEntity.builder()
+                    .recaudoDiarioId(recaudo.getId())
+                    .clienteId(clienteId)
+                    .prestamoId(prestamo.getId())
+                    .orden(ordenDestino)
+                    .valorEsperado(prestamo.getCuotaDiaria())
+                    .valorPagado(BigDecimal.ZERO)
+                    .saldoPendiente(prestamo.getSaldoActual())
+                    .estado("PENDIENTE")
+                    .updatedBy(usuarioId)
+                    .build());
+            recaudo.setTotalEsperado(recaudo.getTotalEsperado().add(detalle.getValorEsperado()));
+            recaudo.setUpdatedAt(LocalDateTime.now());
+            recaudo.setUpdatedBy(usuarioId);
+            recaudoRepository.save(recaudo);
+        }
+        return recaudo.getId();
+    }
+
+    private String limpiar(String value) {
+        if (value == null) {
+            return null;
+        }
+        String t = value.trim();
+        return t.isEmpty() ? null : t;
     }
 
     /** Agrega el cliente al recorrido de la ruta si aún no está en ella. */

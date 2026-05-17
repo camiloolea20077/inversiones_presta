@@ -10,12 +10,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.cloud_technological.inversiones_prestar.dto.clientes.ClienteComboDto;
+import com.cloud_technological.inversiones_prestar.dto.clientes.ClienteDetalleDto;
 import com.cloud_technological.inversiones_prestar.dto.clientes.ClienteListDto;
 import com.cloud_technological.inversiones_prestar.dto.clientes.ClienteRequestDto;
 import com.cloud_technological.inversiones_prestar.dto.clientes.ClienteResponseDto;
 import com.cloud_technological.inversiones_prestar.entity.ClienteEntity;
 import com.cloud_technological.inversiones_prestar.repositories.clientes.ClienteJPARepository;
 import com.cloud_technological.inversiones_prestar.repositories.clientes.ClienteQueryRepository;
+import com.cloud_technological.inversiones_prestar.services.AuditoriaService;
 import com.cloud_technological.inversiones_prestar.services.ClienteService;
 import com.cloud_technological.inversiones_prestar.utils.GlobalException;
 import com.cloud_technological.inversiones_prestar.utils.PageableDto;
@@ -33,6 +35,7 @@ public class ClienteServiceImpl implements ClienteService {
     private final ClienteJPARepository clienteRepository;
     private final ClienteQueryRepository clienteQueryRepository;
     private final SecurityUtils securityUtils;
+    private final AuditoriaService auditoriaService;
 
     @Override
     @Transactional
@@ -54,7 +57,13 @@ public class ClienteServiceImpl implements ClienteService {
                 .updatedBy(securityUtils.getUsuarioId())
                 .build();
 
-        return toResponse(clienteRepository.save(entity));
+        ClienteResponseDto creado = toResponse(clienteRepository.save(entity));
+
+        // Auditoría (HU-BE-020): creación de cliente.
+        auditoriaService.registrar("CREAR", "clientes", creado.getId(),
+                null, creado, "Creación de cliente: " + creado.getNombre());
+
+        return creado;
     }
 
     @Override
@@ -83,6 +92,16 @@ public class ClienteServiceImpl implements ClienteService {
     @Transactional(readOnly = true)
     public ClienteResponseDto obtener(Long id) {
         return toResponse(buscar(id));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ClienteDetalleDto detalle(Long id) {
+        ClienteDetalleDto detalle = clienteQueryRepository.detalle(id);
+        if (detalle == null) {
+            throw new GlobalException(HttpStatus.NOT_FOUND, "Cliente no encontrado");
+        }
+        return detalle;
     }
 
     @Override
