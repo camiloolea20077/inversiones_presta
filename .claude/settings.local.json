@@ -57,7 +57,10 @@
       "Bash(C:/WINDOWS/System32/WindowsPowerShell/v1.0/powershell.exe *)",
       "Bash(JAVA_HOME='C:\\\\Program Files\\\\Java\\\\jdk-21' PATH='C:\\\\Program Files\\\\Java\\\\jdk-21\\\\bin:/c/Windows/System32:/usr/bin:__TRACKED_VAR__' cmd.exe /c 'mvnw.cmd -q compile')",
       "Bash(PATH=\"/c/Windows/System32:/c/Windows:/usr/bin:$PATH\" cmd.exe *)",
-      "Bash(where cmd.exe)"
+      "Bash(where cmd.exe)",
+      "Bash(mkdir -p \"D:/Proyectos Camilo/inversiones_presta_front/src/app/features/admin/presupuesto\")",
+      "Bash(mkdir -p \"D:/Proyectos Camilo/inversiones_presta_front/src/app/features/admin/reportes\")",
+      "Bash(npm uninstall *)"
     ]
   }
 }

@@ -43,6 +43,7 @@ import com.cloud_technological.inversiones_prestar.repositories.trabajadores.Lim
 import com.cloud_technological.inversiones_prestar.repositories.trabajadores.TrabajadorJPARepository;
 import com.cloud_technological.inversiones_prestar.services.AuditoriaService;
 import com.cloud_technological.inversiones_prestar.services.CajaService;
+import com.cloud_technological.inversiones_prestar.services.PresupuestoService;
 import com.cloud_technological.inversiones_prestar.services.PrestamoService;
 import com.cloud_technological.inversiones_prestar.utils.GlobalException;
 import com.cloud_technological.inversiones_prestar.utils.PageableDto;
@@ -70,6 +71,7 @@ public class PrestamoServiceImpl implements PrestamoService {
     private final RecaudoDiarioJPARepository recaudoRepository;
     private final RecaudoDetalleJPARepository recaudoDetalleRepository;
     private final CajaService cajaService;
+    private final PresupuestoService presupuestoService;
     private final AuditoriaService auditoriaService;
     private final SecurityUtils securityUtils;
 
@@ -87,6 +89,9 @@ public class PrestamoServiceImpl implements PrestamoService {
 
         validarLimites(trabajador.getId(), dto.getMontoPrestado(), dto.getTasaPorcentaje(),
                 dto.getPlazoDias());
+
+        // Verifica que el presupuesto del administrador alcance para el préstamo.
+        presupuestoService.validarYDescontarPrestamo(dto.getMontoPrestado());
 
         SimulacionResponseDto calculo = calcular(
                 dto.getMontoPrestado(), dto.getTasaPorcentaje(), dto.getPlazoDias(), tipoInteres);
@@ -145,6 +150,9 @@ public class PrestamoServiceImpl implements PrestamoService {
         String tipoInteres = normalizarTipo(dto.getTipoInteres());
         validarLimites(trabajador.getId(), dto.getMontoPrestado(), dto.getTasaPorcentaje(),
                 dto.getPlazoDias());
+
+        // Verifica que el presupuesto del administrador alcance para el préstamo.
+        presupuestoService.validarYDescontarPrestamo(dto.getMontoPrestado());
 
         Long usuarioId = securityUtils.getUsuarioId();
 
