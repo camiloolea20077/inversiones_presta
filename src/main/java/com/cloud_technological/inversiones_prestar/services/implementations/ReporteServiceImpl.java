@@ -36,9 +36,13 @@ public class ReporteServiceImpl implements ReporteService {
                 .orElse(BigDecimal.ZERO);
 
         BigDecimal totalPrestado = presupuestoQueryRepository.totalPrestadoHistorico();
+        BigDecimal totalComprometido = presupuestoQueryRepository.totalComprometidoHistorico();
         BigDecimal totalRecaudado = presupuestoQueryRepository.totalRecaudadoHistorico();
+        // El saldo disponible compromete el total a pagar (capital + intereses);
+        // las métricas de capital (capitalPrestadoHistorico, capitalRecuperado) siguen
+        // basadas en el capital realmente desembolsado.
         BigDecimal saldoDisponible = escala(
-                capitalAportado.subtract(totalPrestado).add(totalRecaudado));
+                capitalAportado.subtract(totalComprometido).add(totalRecaudado));
 
         BigDecimal capitalEnCalle = presupuestoQueryRepository.capitalEnCalle();
         BigDecimal capitalRecuperado = escala(totalPrestado.subtract(capitalEnCalle));

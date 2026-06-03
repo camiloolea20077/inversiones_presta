@@ -39,6 +39,19 @@ public class PresupuestoQueryRepository {
         return scalar(sql, new MapSqlParameterSource());
     }
 
+    /**
+     * Total comprometido histórico = total a pagar (capital + intereses) de los
+     * préstamos no anulados. Es el valor que realmente sale del presupuesto al
+     * prestar: el interés también se considera puesto en la calle (interés sobre
+     * interés), así que mientras el préstamo esté vigente ese total no está
+     * disponible. A medida que se recauda, el saldo se libera de nuevo.
+     */
+    public BigDecimal totalComprometidoHistorico() {
+        String sql = "SELECT COALESCE(SUM(total_pagar), 0) FROM prestamos "
+                + " WHERE deleted_at IS NULL AND estado <> 'ANULADO' ";
+        return scalar(sql, new MapSqlParameterSource());
+    }
+
     /** Total recaudado histórico (todos los pagos aplicados). */
     public BigDecimal totalRecaudadoHistorico() {
         String sql = "SELECT COALESCE(SUM(valor_pago), 0) FROM pagos "

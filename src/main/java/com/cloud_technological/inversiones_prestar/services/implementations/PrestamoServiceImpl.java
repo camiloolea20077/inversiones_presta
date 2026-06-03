@@ -90,11 +90,12 @@ public class PrestamoServiceImpl implements PrestamoService {
         validarLimites(trabajador.getId(), dto.getMontoPrestado(), dto.getTasaPorcentaje(),
                 dto.getPlazoDias());
 
-        // Verifica que el presupuesto del administrador alcance para el préstamo.
-        presupuestoService.validarYDescontarPrestamo(dto.getMontoPrestado());
-
         SimulacionResponseDto calculo = calcular(
                 dto.getMontoPrestado(), dto.getTasaPorcentaje(), dto.getPlazoDias(), tipoInteres);
+
+        // Verifica que el presupuesto alcance: se compromete el total a pagar
+        // (capital + intereses), no solo el capital (interés sobre interés).
+        presupuestoService.validarYDescontarPrestamo(calculo.getTotalPagar());
 
         LocalDate inicio = LocalDate.now();
         Long usuarioId = securityUtils.getUsuarioId();
@@ -151,8 +152,12 @@ public class PrestamoServiceImpl implements PrestamoService {
         validarLimites(trabajador.getId(), dto.getMontoPrestado(), dto.getTasaPorcentaje(),
                 dto.getPlazoDias());
 
-        // Verifica que el presupuesto del administrador alcance para el préstamo.
-        presupuestoService.validarYDescontarPrestamo(dto.getMontoPrestado());
+        SimulacionResponseDto calculo = calcular(
+                dto.getMontoPrestado(), dto.getTasaPorcentaje(), dto.getPlazoDias(), tipoInteres);
+
+        // Verifica que el presupuesto alcance: se compromete el total a pagar
+        // (capital + intereses), no solo el capital (interés sobre interés).
+        presupuestoService.validarYDescontarPrestamo(calculo.getTotalPagar());
 
         Long usuarioId = securityUtils.getUsuarioId();
 
@@ -178,10 +183,7 @@ public class PrestamoServiceImpl implements PrestamoService {
                 .map(RutaClienteEntity::getOrden)
                 .orElse(null);
 
-        // 4. Crear el préstamo activo + 5. generar las cuotas.
-        SimulacionResponseDto calculo = calcular(
-                dto.getMontoPrestado(), dto.getTasaPorcentaje(), dto.getPlazoDias(), tipoInteres);
-
+        // 4. Crear el préstamo activo + 5. generar las cuotas (reusa `calculo`).
         LocalDate inicio = LocalDate.now();
         PrestamoEntity prestamo = prestamoRepository.save(PrestamoEntity.builder()
                 .clienteId(cliente.getId())

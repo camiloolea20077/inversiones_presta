@@ -153,9 +153,11 @@ public class PresupuestoServiceImpl implements PresupuestoService {
 
     private BigDecimal calcularSaldoDisponible(Long presupuestoId) {
         BigDecimal capital = presupuestoQueryRepository.capitalAportado(presupuestoId);
-        BigDecimal prestado = presupuestoQueryRepository.totalPrestadoHistorico();
+        // Se compromete el total a pagar (capital + intereses), no solo el capital:
+        // el interés también se considera puesto en la calle (interés sobre interés).
+        BigDecimal comprometido = presupuestoQueryRepository.totalComprometidoHistorico();
         BigDecimal recaudado = presupuestoQueryRepository.totalRecaudadoHistorico();
-        return escala(capital.subtract(prestado).add(recaudado));
+        return escala(capital.subtract(comprometido).add(recaudado));
     }
 
     private void registrarMovimiento(Long presupuestoId, String tipo, BigDecimal valor,
@@ -173,9 +175,12 @@ public class PresupuestoServiceImpl implements PresupuestoService {
     private PresupuestoResponseDto construirResponse(PresupuestoAdminEntity p) {
         BigDecimal capital = presupuestoQueryRepository.capitalAportado(p.getId());
         BigDecimal prestado = presupuestoQueryRepository.totalPrestadoHistorico();
+        BigDecimal comprometido = presupuestoQueryRepository.totalComprometidoHistorico();
         BigDecimal recaudado = presupuestoQueryRepository.totalRecaudadoHistorico();
         BigDecimal capitalEnCalle = presupuestoQueryRepository.capitalEnCalle();
-        BigDecimal saldoDisponible = escala(capital.subtract(prestado).add(recaudado));
+        // El saldo disponible se reduce por el total a pagar (interés sobre interés);
+        // "totalPrestado" se mantiene como el capital realmente desembolsado.
+        BigDecimal saldoDisponible = escala(capital.subtract(comprometido).add(recaudado));
 
         List<MovimientoPresupuestoDto> movimientos = movimientoRepository
                 .findByPresupuestoIdAndDeletedAtIsNullOrderByFechaMovimientoDesc(p.getId())
